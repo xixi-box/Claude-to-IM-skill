@@ -116,15 +116,22 @@ impl BridgeManager {
                 .and_then(|s| s.trim().parse::<u32>().ok())
         });
 
+        let platforms: Vec<String> = status_json
+            .as_ref()
+            .and_then(|j| j.get("platforms"))
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        let last_error = status_json
+            .as_ref()
+            .and_then(|j| j.get("lastError"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
         BridgeStatus {
             running,
             pid,
-            platforms: status_json
-                .and_then(|j| j.get("platforms").cloned())
-                .and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default(),
-            last_error: status_json
-                .and_then(|j| j.get("lastError").and_then(|v| v.as_str().map(|s| s.to_string()))),
+            platforms,
+            last_error,
         }
     }
 }
