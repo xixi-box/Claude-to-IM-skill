@@ -34,11 +34,27 @@ pub async fn get_logs(lines: Option<usize>) -> Result<Vec<LogLine>, String> {
         .into_iter()
         .rev()
         .filter_map(|line| {
-            let re = regex::Regex::new(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s*\[(\w+)\]\s*(.+)").ok()?;
+            // Match ISO format: [2026-03-16T07:18:56.594Z] or [2026-03-16 07:18:56]
+            let re = regex::Regex::new(r"\[(\d{4}-\d{2}-\d{2}T?\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]\s*\[(\w+)\]\s*(.+)").ok()?;
             let caps = re.captures(line)?;
 
+            let time_str = caps.get(1)?.as_str();
+            // Convert ISO format to readable format
+            let time_display = if time_str.contains('T') {
+                time_str
+                    .replace('T', " ")
+                    .replace(".000Z", "")
+                    .replace('Z', "")
+                    .split('.')
+                    .next()
+                    .unwrap_or(time_str)
+                    .to_string()
+            } else {
+                time_str.to_string()
+            };
+
             Some(LogLine {
-                time: caps.get(1)?.as_str().to_string(),
+                time: time_display,
                 level: caps.get(2)?.as_str().to_lowercase(),
                 message: caps.get(3)?.as_str().to_string(),
             })

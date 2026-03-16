@@ -8,7 +8,10 @@
       "Bash(git push:*)",
       "Bash(ls:*)",
       "Bash(gh run:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//c/Users/wangshun/.claude/skills/claude-to-im/**)",
+      "Bash(node dist/daemon.mjs)",
+      "Bash(tasklist:*)"
     ]
   }
 }
