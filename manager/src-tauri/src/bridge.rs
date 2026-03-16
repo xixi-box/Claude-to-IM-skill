@@ -29,22 +29,42 @@ impl BridgeManager {
         let home = dirs::home_dir().ok_or("Cannot find home directory")?;
         let skill_dir = home.join(".claude/skills/claude-to-im");
 
+        // 检查 git-bash 路径并设置环境变量
+        let git_bash_paths = [
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\bin\bash.exe",
+            r"C:\Git\bin\bash.exe",
+        ];
+
+        let git_bash_path = git_bash_paths
+            .iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .map(|s| s.to_string());
+
         #[cfg(target_os = "windows")]
         {
-            let output = Command::new("powershell")
-                .args([
-                    "-ExecutionPolicy", "Bypass",
-                    "-File",
-                    &skill_dir.join("scripts/supervisor-windows.ps1").to_string_lossy(),
-                    "start"
-                ])
-                .output()
+            let mut cmd = Command::new("powershell");
+            cmd.args([
+                "-ExecutionPolicy", "Bypass",
+                "-File",
+                &skill_dir.join("scripts/supervisor-windows.ps1").to_string_lossy(),
+                "start"
+            ]);
+
+            // 设置 git-bash 环境变量
+            if let Some(ref bash_path) = git_bash_path {
+                cmd.env("CLAUDE_CODE_GIT_BASH_PATH", bash_path);
+            }
+
+            let output = cmd.output()
                 .map_err(|e| format!("Failed to start bridge: {}", e))?;
 
             if !output.status.success() {
-                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return Err(format!("{}\n{}", stderr, stdout));
             }
-            std::thread::sleep(Duration::from_secs(2));
+            std::thread::sleep(Duration::from_secs(3));
         }
 
         #[cfg(not(target_os = "windows"))]
@@ -75,21 +95,57 @@ impl BridgeManager {
 
         #[cfg(target_os = "windows")]
         {
-            let _ = Command::new("powershell")
+            let output = Command::new("powershell")
                 .args([
                     "-ExecutionPolicy", "Bypass",
                     "-File",
                     &skill_dir.join("scripts/supervisor-windows.ps1").to_string_lossy(),
                     "stop"
                 ])
-                .output();
+                .output()
+                .map_err(|e| format!("Failed to stop bridge: {}", e))?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            println!("Stop output: {}\n{}", stdout, stderr);
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            let _ = Command::new("bash")
+            let output = Command::new("bash")
                 .args([&skill_dir.join("scripts/daemon.sh").to_string_lossy(), "stop"])
-                .output();
+                .output()
+                .map_err(|e| format!("Failed to stop bridge: {}", e))?;
+
+            println!("Stop output: {}", String::from_utf8_lossy(&output.stdout));
+        }
+
+        // 强制清理
+        let pid_file = home.join(".claude-to-im/runtime/bridge.pid");
+        if let Some(pid) = self.pid {
+            // 尝试强制结束进程
+            #[cfg(target_os = "windows")]
+            {
+                let _ = Command::new("taskkill")
+                    .args(["/PID", &pid.to_string(), "/F"])
+                    .output();
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let _ = Command::new("kill")
+                    .args(["-9", &pid.to_string()])
+                    .output();
+            }
+        }
+
+        if pid_file.exists() {
+            let _ = std::fs::remove_file(&pid_file);
+        }
+
+        // 清理 status.json
+        let status_file = home.join(".claude-to-im/runtime/status.json");
+        if status_file.exists() {
+            let _ = std::fs::write(&status_file, r#"{"running":false}"#);
         }
 
         self.pid = None;
@@ -116,6 +172,29 @@ impl BridgeManager {
                 .and_then(|s| s.trim().parse::<u32>().ok())
         });
 
+        // 验证进程是否真的在运行
+        let actually_running = if let Some(p) = pid {
+            #[cfg(target_os = "windows")]
+            {
+                std::process::Command::new("tasklist")
+                    .args(["/FI", &format!("PID eq {}", p)])
+                    .output()
+                    .ok()
+                    .map(|o| String::from_utf8_lossy(&o.stdout).contains(&p.to_string()))
+                    .unwrap_or(false)
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                std::process::Command::new("kill")
+                    .args(["-0", &p.to_string()])
+                    .status()
+                    .map(|s| s.success())
+                    .unwrap_or(false)
+            }
+        } else {
+            false
+        };
+
         let platforms: Vec<String> = status_json
             .as_ref()
             .and_then(|j| j.get("platforms"))
@@ -128,8 +207,8 @@ impl BridgeManager {
             .and_then(|v| v.as_str().map(|s| s.to_string()));
 
         BridgeStatus {
-            running,
-            pid,
+            running: running && actually_running,
+            pid: if actually_running { pid } else { None },
             platforms,
             last_error,
         }

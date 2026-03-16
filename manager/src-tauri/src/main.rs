@@ -26,6 +26,7 @@ fn main() {
     let bridge_for_setup = bridge.clone();
     let config_for_setup = config.clone();
     let bridge_for_tray = bridge.clone();
+    let bridge_for_close = bridge.clone();
 
     tauri::Builder::default()
         .manage(AppState { bridge, config })
@@ -43,22 +44,30 @@ fn main() {
                         "start" => {
                             let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
-                                bridge.lock().await.start().ok();
+                                if let Err(e) = bridge.lock().await.start() {
+                                    eprintln!("Failed to start bridge: {}", e);
+                                }
                             });
                         }
                         "stop" => {
                             let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
-                                bridge.lock().await.stop().ok();
+                                if let Err(e) = bridge.lock().await.stop() {
+                                    eprintln!("Failed to stop bridge: {}", e);
+                                }
                             });
                         }
                         "restart" => {
                             let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
                                 let mut b = bridge.lock().await;
-                                b.stop().ok();
-                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                                b.start().ok();
+                                if let Err(e) = b.stop() {
+                                    eprintln!("Failed to stop: {}", e);
+                                }
+                                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                                if let Err(e) = b.start() {
+                                    eprintln!("Failed to start: {}", e);
+                                }
                             });
                         }
                         "show" => {
@@ -68,6 +77,13 @@ fn main() {
                             }
                         }
                         "quit" => {
+                            // 退出前停止桥接服务
+                            let bridge = bridge_for_close.clone();
+                            tauri::async_runtime::block_on(async {
+                                if let Err(e) = bridge.lock().await.stop() {
+                                    eprintln!("Failed to stop bridge on exit: {}", e);
+                                }
+                            });
                             std::process::exit(0);
                         }
                         _ => {}
@@ -92,7 +108,9 @@ fn main() {
                 let cfg = config.lock().await;
                 if cfg.settings.auto_start_bridge {
                     drop(cfg);
-                    bridge.lock().await.start().ok();
+                    if let Err(e) = bridge.lock().await.start() {
+                        eprintln!("Failed to auto-start bridge: {}", e);
+                    }
                 }
             });
 
