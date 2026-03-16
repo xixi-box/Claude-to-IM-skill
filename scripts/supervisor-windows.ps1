@@ -117,6 +117,52 @@ function Get-NodePath {
     return $nodePath
 }
 
+# ── Git Bash Detection ──
+
+function Find-GitBash {
+    # 已设置环境变量则直接返回
+    if ($env:CLAUDE_CODE_GIT_BASH_PATH -and (Test-Path $env:CLAUDE_CODE_GIT_BASH_PATH)) {
+        return $env:CLAUDE_CODE_GIT_BASH_PATH
+    }
+
+    # 常见安装路径
+    $commonPaths = @(
+        "${env:ProgramFiles}\Git\bin\bash.exe"
+        "${env:ProgramFiles(x86)}\Git\bin\bash.exe"
+        "C:\Git\bin\bash.exe"
+        "D:\Git\bin\bash.exe"
+        "D:\dev\Git\bin\bash.exe"
+    )
+
+    foreach ($p in $commonPaths) {
+        if ($p -and (Test-Path $p)) {
+            Write-Host "Found Git Bash at: $p"
+            return $p
+        }
+    }
+
+    # 使用 where 命令查找
+    try {
+        $bashPaths = @(where.exe bash 2>$null | Where-Object { $_ -like "*Git*" })
+        if ($bashPaths.Count -gt 0) {
+            # 优先选择 bin 目录下的 bash
+            $binBash = $bashPaths | Where-Object { $_ -like "*\bin\bash.exe" } | Select-Object -First 1
+            if ($binBash) {
+                Write-Host "Found Git Bash via where.exe: $binBash"
+                return $binBash
+            }
+            # 否则用第一个 Git 相关的 bash
+            $gitBash = $bashPaths | Select-Object -First 1
+            if ($gitBash) {
+                Write-Host "Found bash via where.exe: $gitBash"
+                return $gitBash
+            }
+        }
+    } catch {}
+
+    return $null
+}
+
 # ── WinSW / NSSM detection ──
 
 function Find-ServiceManager {
@@ -141,7 +187,12 @@ function Install-WinSWService {
     $cred = Get-Credential -UserName $currentUser -Message "Enter password for '$currentUser' (required for Windows Service logon)"
     $plainPwd = $cred.GetNetworkCredential().Password
 
+    # Detect Git Bash
+    $gitBash = Find-GitBash
+
     # Generate WinSW config XML
+    $gitBashEnv = if ($gitBash) { "  <env name=`"CLAUDE_CODE_GIT_BASH_PATH`" value=`"$gitBash`"/>" } else { "" }
+
     @"
 <service>
   <id>$ServiceName</id>
@@ -160,6 +211,7 @@ function Install-WinSWService {
   <env name="LOCALAPPDATA" value="$env:LOCALAPPDATA"/>
   <env name="PATH" value="$env:PATH"/>
   <env name="CTI_HOME" value="$CtiHome"/>
+$gitBashEnv
   <logpath>$(Join-Path $CtiHome 'logs')</logpath>
   <log mode="append">
     <logfile>bridge-service.log</logfile>
@@ -191,6 +243,9 @@ function Install-NSSMService {
     $cred = Get-Credential -UserName $currentUser -Message "Enter password for '$currentUser' (required for Windows Service logon)"
     $plainPwd = $cred.GetNetworkCredential().Password
 
+    # Detect Git Bash
+    $gitBash = Find-GitBash
+
     & $NSSMPath install $ServiceName $nodePath $DaemonMjs
     & $NSSMPath set $ServiceName AppDirectory $SkillDir
     & $NSSMPath set $ServiceName ObjectName $currentUser $plainPwd
@@ -200,7 +255,12 @@ function Install-NSSMService {
     & $NSSMPath set $ServiceName AppStderrCreationDisposition 4
     & $NSSMPath set $ServiceName Description "Claude-to-IM bridge daemon"
     & $NSSMPath set $ServiceName AppRestartDelay 10000
-    & $NSSMPath set $ServiceName AppEnvironmentExtra "USERPROFILE=$env:USERPROFILE" "APPDATA=$env:APPDATA" "LOCALAPPDATA=$env:LOCALAPPDATA" "CTI_HOME=$CtiHome"
+
+    $envVars = @("USERPROFILE=$env:USERPROFILE", "APPDATA=$env:APPDATA", "LOCALAPPDATA=$env:LOCALAPPDATA", "CTI_HOME=$CtiHome")
+    if ($gitBash) {
+        $envVars += "CLAUDE_CODE_GIT_BASH_PATH=$gitBash"
+    }
+    & $NSSMPath set $ServiceName AppEnvironmentExtra @envVars
 
     Write-Host "Service '$ServiceName' installed via NSSM."
     Write-Host "  Service account: $currentUser"
@@ -213,13 +273,17 @@ function Install-NSSMService {
 function Start-Fallback {
     $nodePath = Get-NodePath
 
-    # Clean env
-    $envClone = [System.Collections.Hashtable]::new()
-    foreach ($key in [System.Environment]::GetEnvironmentVariables().Keys) {
-        $envClone[$key] = [System.Environment]::GetEnvironmentVariable($key)
+    # Detect and set Git Bash path
+    $gitBash = Find-GitBash
+    if ($gitBash) {
+        $env:CLAUDE_CODE_GIT_BASH_PATH = $gitBash
+        Write-Host "Setting CLAUDE_CODE_GIT_BASH_PATH=$gitBash"
     }
-    # Remove CLAUDECODE
-    [System.Environment]::SetEnvironmentVariable('CLAUDECODE', $null)
+
+    # Remove CLAUDECODE if present
+    if ($env:CLAUDECODE) {
+        Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue
+    }
 
     $proc = Start-Process -FilePath $nodePath `
         -ArgumentList $DaemonMjs `

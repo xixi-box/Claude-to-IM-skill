@@ -34,6 +34,8 @@ impl BridgeManager {
             r"C:\Program Files\Git\bin\bash.exe",
             r"C:\Program Files (x86)\Git\bin\bash.exe",
             r"C:\Git\bin\bash.exe",
+            r"D:\Git\bin\bash.exe",
+            r"D:\dev\Git\bin\bash.exe",
         ];
 
         let git_bash_path = git_bash_paths
