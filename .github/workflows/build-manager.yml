@@ -48,17 +48,24 @@ jobs:
       - name: List build outputs
         shell: bash
         run: |
-          echo "=== Release directory ==="
-          ls -la manager/src-tauri/target/release/*.exe || echo "No exe in release"
+          echo "=== All exe files ==="
+          find manager/src-tauri/target/release -name "*.exe" -type f || echo "No exe found"
           echo "=== MSI directory ==="
           ls -la manager/src-tauri/target/release/bundle/msi/ || echo "No MSI"
           echo "=== NSIS directory ==="
           ls -la manager/src-tauri/target/release/bundle/nsis/ || echo "No NSIS"
 
-      - name: Rename portable exe
+      - name: Prepare portable exe
         shell: bash
         run: |
-          mv manager/src-tauri/target/release/claude-to-im-manager.exe manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
+          # Find the main exe (could be named differently)
+          EXE_FILE=$(find manager/src-tauri/target/release -name "*.exe" -type f | grep -v bundle | head -1)
+          if [ -n "$EXE_FILE" ]; then
+            echo "Found exe: $EXE_FILE"
+            cp "$EXE_FILE" manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
+          else
+            echo "No standalone exe found, will use NSIS installer as portable"
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -68,6 +75,7 @@ jobs:
             manager/src-tauri/target/release/bundle/msi/*.msi
             manager/src-tauri/target/release/bundle/nsis/*.exe
             manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
+          if-no-files-found: warn
 
   release:
     needs: build-windows
