@@ -9,7 +9,7 @@ mod tray;
 use bridge::BridgeManager;
 use config::AppConfig;
 use std::sync::Arc;
-use tauri::{Manager, SystemTrayEvent};
+use tauri::{Manager, SystemTrayEvent, WindowEvent};
 use tokio::sync::Mutex;
 
 pub struct AppState {
@@ -73,6 +73,13 @@ fn main() {
                     }
                 }
                 _ => {}
+            }
+        })
+        .on_window_event(|event| {
+            // 关闭窗口时隐藏到托盘而不是退出
+            if let WindowEvent::CloseRequested { api, .. } = event.event() {
+                event.window().hide().ok();
+                api.prevent_close();
             }
         })
         .setup(move |app| {

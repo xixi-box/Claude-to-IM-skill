@@ -1,22 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import StatusPage from './pages/Status'
 import LogsPage from './pages/Logs'
 import ChatPage from './pages/Chat'
 import SettingsPage from './pages/Settings'
 import { useBridgeStore } from './store/bridge'
+import { getTranslation } from './i18n'
 
 type Page = 'status' | 'logs' | 'chat' | 'settings'
 
-const navItems = [
-  { id: 'status' as Page, label: 'Status', icon: '📊' },
-  { id: 'logs' as Page, label: 'Logs', icon: '📝' },
-  { id: 'chat' as Page, label: 'Chat', icon: '💬' },
-  { id: 'settings' as Page, label: 'Settings', icon: '⚙️' },
-]
-
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('status')
-  const { status } = useBridgeStore()
+  const { status, settings, fetchSettings } = useBridgeStore()
+  const t = (key: any) => getTranslation(settings.language, key)
+
+  // 加载设置
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
+
+  // 应用主题
+  useEffect(() => {
+    const applyTheme = () => {
+      let theme = settings.theme
+      if (theme === 'system') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      document.documentElement.setAttribute('data-theme', theme)
+    }
+    applyTheme()
+
+    // 监听系统主题变化
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQuery.addEventListener('change', applyTheme)
+    return () => mediaQuery.removeEventListener('change', applyTheme)
+  }, [settings.theme])
+
+  const navItems = [
+    { id: 'status' as Page, label: t('status'), icon: '📊' },
+    { id: 'logs' as Page, label: t('logs'), icon: '📝' },
+    { id: 'chat' as Page, label: t('chat'), icon: '💬' },
+    { id: 'settings' as Page, label: t('settings'), icon: '⚙️' },
+  ]
 
   const renderPage = () => {
     switch (currentPage) {
@@ -33,7 +57,7 @@ function App() {
         <div className="sidebar-logo">
           <h1>Claude-to-IM</h1>
           <span>
-            {status.running ? '● Running' : '○ Stopped'}
+            {status.running ? `● ${t('running')}` : `○ ${t('stopped')}`}
           </span>
         </div>
         <nav className="sidebar-nav">

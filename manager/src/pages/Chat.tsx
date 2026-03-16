@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useBridgeStore, ChatMessage } from '../store/bridge'
+import { getTranslation } from '../i18n'
 import dayjs from 'dayjs'
 
 export default function ChatPage() {
-  const { messages, fetchMessages, clearMessages } = useBridgeStore()
+  const { messages, fetchMessages, clearMessages, settings } = useBridgeStore()
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [platformFilter, setPlatformFilter] = useState<string>('all')
+  const t = (key: any) => getTranslation(settings.language, key)
 
   useEffect(() => {
     fetchMessages()
@@ -20,13 +22,13 @@ export default function ChatPage() {
   })
 
   const handleClearAll = async () => {
-    if (confirm('Clear all chat history? This cannot be undone.')) {
+    if (confirm(t('confirmClearAll'))) {
       await clearMessages()
     }
   }
 
   const handleClearOld = async () => {
-    if (confirm('Clear messages older than 3 days?')) {
+    if (confirm(t('confirmClearOld'))) {
       await clearMessages('old')
     }
   }
@@ -34,8 +36,8 @@ export default function ChatPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Chat History</h2>
-        <p>View recent messages (auto-cleanup after 3 days)</p>
+        <h2>{t('chatTitle')}</h2>
+        <p>{t('chatSubtitle')}</p>
       </div>
 
       <div className="card">
@@ -47,7 +49,7 @@ export default function ChatPage() {
               value={selectedSession || ''}
               onChange={e => setSelectedSession(e.target.value || null)}
             >
-              <option value="">All Sessions</option>
+              <option value="">{t('allSessions')}</option>
               {sessions.map(s => (
                 <option key={s} value={s}>{s.slice(0, 20)}...</option>
               ))}
@@ -58,7 +60,7 @@ export default function ChatPage() {
               value={platformFilter}
               onChange={e => setPlatformFilter(e.target.value)}
             >
-              <option value="all">All Platforms</option>
+              <option value="all">{t('allPlatforms')}</option>
               <option value="telegram">Telegram</option>
               <option value="discord">Discord</option>
               <option value="feishu">Feishu</option>
@@ -67,10 +69,10 @@ export default function ChatPage() {
           </div>
           <div className="btn-group">
             <button className="btn btn-secondary" onClick={handleClearOld}>
-              Clear Old
+              {t('clearOld')}
             </button>
             <button className="btn btn-error" onClick={handleClearAll}>
-              Clear All
+              {t('clearAll')}
             </button>
           </div>
         </div>
@@ -78,13 +80,13 @@ export default function ChatPage() {
         <div className="chat-list" style={{ maxHeight: 500, overflow: 'auto' }}>
           {filteredMessages.length === 0 ? (
             <div className="empty-state">
-              <p>No messages</p>
+              <p>{t('noMessages')}</p>
             </div>
           ) : (
             filteredMessages.map(msg => (
               <div key={msg.id} className={`chat-message ${msg.role}`}>
                 <div className="chat-header">
-                  <span>{msg.role === 'user' ? 'User' : 'Claude'}</span>
+                  <span>{msg.role === 'user' ? t('user') : 'Claude'}</span>
                   <span>({msg.platform})</span>
                   <span>{dayjs(msg.timestamp).format('HH:mm:ss')}</span>
                 </div>
@@ -98,7 +100,7 @@ export default function ChatPage() {
         </div>
 
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
-          {filteredMessages.length} messages
+          {filteredMessages.length} {t('messages')}
         </div>
       </div>
     </div>

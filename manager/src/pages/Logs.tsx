@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useBridgeStore, LogLine } from '../store/bridge'
+import { getTranslation } from '../i18n'
 
 export default function LogsPage() {
-  const { logs, fetchLogs } = useBridgeStore()
+  const { logs, fetchLogs, settings } = useBridgeStore()
   const [filter, setFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all')
+  const t = (key: any) => getTranslation(settings.language, key)
 
   useEffect(() => {
     fetchLogs(200)
@@ -19,8 +21,8 @@ export default function LogsPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>System Logs</h2>
-        <p>View bridge service logs</p>
+        <h2>{t('logsTitle')}</h2>
+        <p>{t('logsSubtitle')}</p>
       </div>
 
       <div className="card">
@@ -32,19 +34,19 @@ export default function LogsPage() {
                 className={`btn btn-secondary ${filter === f ? 'btn-primary' : ''}`}
                 onClick={() => setFilter(f)}
               >
-                {f === 'all' ? 'All' : f.toUpperCase()}
+                {f === 'all' ? t('all') : f.toUpperCase()}
               </button>
             ))}
           </div>
           <button className="btn btn-secondary" onClick={() => fetchLogs(500)}>
-            Refresh
+            {t('refresh')}
           </button>
         </div>
 
         <div className="log-viewer" style={{ height: 500, overflow: 'auto' }}>
           {filteredLogs.length === 0 ? (
             <div className="empty-state">
-              <p>No logs</p>
+              <p>{t('noLogs')}</p>
             </div>
           ) : (
             filteredLogs.map((log, i) => (
