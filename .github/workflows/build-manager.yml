@@ -45,26 +45,36 @@ jobs:
         working-directory: manager
         run: npm run tauri:build
 
-      - name: List build outputs
+      - name: Create portable version
         shell: bash
         run: |
-          echo "=== All exe files ==="
-          find manager/src-tauri/target/release -name "*.exe" -type f || echo "No exe found"
-          echo "=== MSI directory ==="
-          ls -la manager/src-tauri/target/release/bundle/msi/ || echo "No MSI"
-          echo "=== NSIS directory ==="
-          ls -la manager/src-tauri/target/release/bundle/nsis/ || echo "No NSIS"
+          # Find the MSI file
+          MSI_FILE=$(ls manager/src-tauri/target/release/bundle/msi/*.msi | head -1)
+          echo "MSI file: $MSI_FILE"
 
-      - name: Prepare portable exe
-        shell: bash
-        run: |
-          # Find the main exe (could be named differently)
-          EXE_FILE=$(find manager/src-tauri/target/release -name "*.exe" -type f | grep -v bundle | head -1)
-          if [ -n "$EXE_FILE" ]; then
-            echo "Found exe: $EXE_FILE"
-            cp "$EXE_FILE" manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
+          # Install 7zip
+          choco install 7zip -y
+
+          # Extract MSI to portable folder
+          mkdir -p portable
+          7z x "$MSI_FILE" -oportable -y
+
+          # Find the main app folder (usually contains .exe and resources)
+          APP_FOLDER=$(find portable -name "Claude-to-IM Manager.exe" -type f | head -1)
+          if [ -n "$APP_FOLDER" ]; then
+            # Get the directory containing the exe
+            APP_DIR=$(dirname "$APP_FOLDER")
+            echo "App directory: $APP_DIR"
+
+            # Create ZIP
+            cd "$APP_DIR/.."
+            7z a -tzip "$GITHUB_WORKSPACE/Claude-to-IM-Manager-Portable.zip" "$(basename "$APP_DIR")"
+            cd "$GITHUB_WORKSPACE"
           else
-            echo "No standalone exe found, will use NSIS installer as portable"
+            echo "Could not find main exe, creating zip from entire extraction"
+            cd portable
+            7z a -tzip "$GITHUB_WORKSPACE/Claude-to-IM-Manager-Portable.zip" .
+            cd "$GITHUB_WORKSPACE"
           fi
 
       - name: Upload artifacts
@@ -74,8 +84,7 @@ jobs:
           path: |
             manager/src-tauri/target/release/bundle/msi/*.msi
             manager/src-tauri/target/release/bundle/nsis/*.exe
-            manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
-          if-no-files-found: warn
+            Claude-to-IM-Manager-Portable.zip
 
   release:
     needs: build-windows
