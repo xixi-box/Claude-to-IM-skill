@@ -1,6 +1,6 @@
 {
   "name": "claude-to-im-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GUI Manager for Claude-to-IM Bridge",
   "author": "Claude-to-IM",
   "type": "module",
