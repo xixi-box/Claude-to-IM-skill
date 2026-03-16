@@ -58,7 +58,7 @@ export default function InstallPage() {
           <ul>
             <li>
               <span className="req-icon">✓</span>
-              Node.js >= 20
+              Node.js &gt;= 20
             </li>
             <li>
               <span className="req-icon">✓</span>
