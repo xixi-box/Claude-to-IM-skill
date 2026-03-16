@@ -63,7 +63,7 @@
         "height": 650,
         "minWidth": 700,
         "minHeight": 500,
-        "hidden": true
+        "visible": false
       }
     ]
   }
