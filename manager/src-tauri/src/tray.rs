@@ -1,4 +1,4 @@
-use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+use tauri::{CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem};
 
 pub fn create_tray() -> SystemTray {
     let start = CustomMenuItem::new("start".to_string(), "Start");

@@ -18,9 +18,15 @@ fn main() {
     let bridge = Arc::new(Mutex::new(BridgeManager::new()));
     let config = Arc::new(Mutex::new(AppConfig::load().unwrap_or_default()));
 
+    // Clone for use in closures
+    let bridge_for_setup = bridge.clone();
+    let config_for_setup = config.clone();
+    let bridge_for_tray = bridge.clone();
+
     tauri::Builder::default()
+        .manage(AppState { bridge, config })
         .system_tray(tray::create_tray())
-        .on_system_tray_event(|app, event| {
+        .on_system_tray_event(move |app, event| {
             match event {
                 SystemTrayEvent::LeftClick { .. } => {
                     if let Some(window) = app.get_window("main") {
@@ -31,19 +37,19 @@ fn main() {
                 SystemTrayEvent::MenuItemClick { id, .. } => {
                     match id.as_str() {
                         "start" => {
-                            let bridge = app.state::<AppState>().bridge.clone();
+                            let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
                                 bridge.lock().await.start().ok();
                             });
                         }
                         "stop" => {
-                            let bridge = app.state::<AppState>().bridge.clone();
+                            let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
                                 bridge.lock().await.stop().ok();
                             });
                         }
                         "restart" => {
-                            let bridge = app.state::<AppState>().bridge.clone();
+                            let bridge = bridge_for_tray.clone();
                             tauri::async_runtime::spawn(async move {
                                 let mut b = bridge.lock().await;
                                 b.stop().ok();
@@ -66,21 +72,24 @@ fn main() {
                 _ => {}
             }
         })
-        .setup(|app| {
-            let config_clone = config.clone();
-            let bridge_clone = bridge.clone();
+        .setup(move |app| {
+            let bridge = bridge_for_setup.clone();
+            let config = config_for_setup.clone();
+
+            // Auto-start bridge if configured
             tauri::async_runtime::spawn(async move {
-                let cfg = config_clone.lock().await;
+                let cfg = config.lock().await;
                 if cfg.settings.auto_start_bridge {
                     drop(cfg);
-                    bridge_clone.lock().await.start().ok();
+                    bridge.lock().await.start().ok();
                 }
             });
 
+            // Show window if not start minimized
             let window = app.get_window("main").unwrap();
-            let config_clone = config.clone();
+            let config = config_for_setup.clone();
             tauri::async_runtime::spawn(async move {
-                let cfg = config_clone.lock().await;
+                let cfg = config.lock().await;
                 if !cfg.settings.start_minimized {
                     window.show().ok();
                 }
@@ -88,7 +97,6 @@ fn main() {
 
             Ok(())
         })
-        .manage(AppState { bridge, config })
         .invoke_handler(tauri::generate_handler![
             bridge::get_bridge_status,
             bridge::start_bridge,

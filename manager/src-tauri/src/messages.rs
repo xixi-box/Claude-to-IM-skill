@@ -49,7 +49,7 @@ pub async fn get_logs(lines: Option<usize>) -> Result<Vec<LogLine>, String> {
 }
 
 #[tauri::command]
-pub async fn get_messages(_state: tauri::State<'_, AppState>) -> Result<Vec<ChatMessage>, String> {
+pub async fn get_messages() -> Result<Vec<ChatMessage>, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
     let messages_dir = home.join(".claude-to-im/data/messages");
 
