@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub auto_start: bool,
     pub start_minimized: bool,
@@ -30,7 +29,7 @@ impl Default for Settings {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AppConfig {
     pub settings: Settings,
 }
@@ -43,7 +42,7 @@ impl AppConfig {
         let settings: Settings = if settings_path.exists() {
             std::fs::read_to_string(&settings_path)
                 .ok()
-                .and_then(|s| serde_json::from_str(s).ok())
+                .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default()
         } else {
             Settings::default()

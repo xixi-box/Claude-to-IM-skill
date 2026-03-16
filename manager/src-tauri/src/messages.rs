@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use tauri::State;
 use crate::AppState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +49,7 @@ pub async fn get_logs(lines: Option<usize>) -> Result<Vec<LogLine>, String> {
 }
 
 #[tauri::command]
-pub async fn get_messages(state: State<'_, AppState>) -> Result<Vec<ChatMessage>, String> {
+pub async fn get_messages(_state: tauri::State<'_, AppState>) -> Result<Vec<ChatMessage>, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
     let messages_dir = home.join(".claude-to-im/data/messages");
 
@@ -78,7 +77,7 @@ pub async fn get_messages(state: State<'_, AppState>) -> Result<Vec<ChatMessage>
 }
 
 #[tauri::command]
-pub async fn clear_messages(session_id: Option<String>, state: State<'_, AppState>) -> Result<(), String> {
+pub async fn clear_messages(session_id: Option<String>, state: tauri::State<'_, AppState>) -> Result<(), String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
     let messages_dir = home.join(".claude-to-im/data/messages");
 

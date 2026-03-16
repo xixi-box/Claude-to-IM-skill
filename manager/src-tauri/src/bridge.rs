@@ -2,7 +2,6 @@ use crate::AppState;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::time::Duration;
-use sysinfo::{Pid, System};
 use tauri::State;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,7 +102,7 @@ impl BridgeManager {
 
         let status_json: Option<serde_json::Value> = std::fs::read_to_string(&status_file)
             .ok()
-            .and_then(|s| serde_json::from_str(s).ok());
+            .and_then(|s| serde_json::from_str(&s).ok());
 
         let running = status_json
             .as_ref()
