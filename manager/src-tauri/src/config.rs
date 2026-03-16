@@ -17,7 +17,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             auto_start: false,
-            start_minimized: true,
+            start_minimized: false,
             auto_start_bridge: false,
             notify_on_start: true,
             notify_on_stop: true,
