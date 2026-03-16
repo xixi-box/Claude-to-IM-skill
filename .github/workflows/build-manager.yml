@@ -46,6 +46,7 @@ jobs:
         run: npm run tauri:build
 
       - name: List build outputs
+        shell: bash
         run: |
           echo "=== Release directory ==="
           ls -la manager/src-tauri/target/release/*.exe || echo "No exe in release"
@@ -55,6 +56,7 @@ jobs:
           ls -la manager/src-tauri/target/release/bundle/nsis/ || echo "No NSIS"
 
       - name: Rename portable exe
+        shell: bash
         run: |
           mv manager/src-tauri/target/release/claude-to-im-manager.exe manager/src-tauri/target/release/Claude-to-IM-Manager-Portable.exe
 
