@@ -39,7 +39,7 @@ jobs:
 
       - name: Generate icons
         working-directory: manager/icons
-        run: node generate.js
+        run: node generate.cjs
 
       - name: Build Tauri app
         working-directory: manager
