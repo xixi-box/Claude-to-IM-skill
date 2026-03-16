@@ -203,6 +203,7 @@ export const translations = {
 
 export type TranslationKey = keyof typeof translations['zh-CN']
 
-export function getTranslation(lang: Language, key: TranslationKey): string {
-  return translations[lang]?.[key] || translations['zh-CN'][key] || key
+export function getTranslation(lang: string, key: TranslationKey): string {
+  const validLang: Language = (lang === 'zh-CN' || lang === 'zh-TW' || lang === 'en') ? lang : 'zh-CN'
+  return translations[validLang]?.[key] || translations['zh-CN'][key] || key
 }
