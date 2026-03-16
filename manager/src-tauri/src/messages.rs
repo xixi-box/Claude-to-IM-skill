@@ -10,12 +10,25 @@ pub struct LogLine {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub session_id: String,
+    #[serde(default)]
     pub platform: String,
     pub role: String,
     pub content: String,
+    #[serde(default)]
     pub timestamp: u64,
+}
+
+// 兼容实际存储的简化格式
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoredMessage {
+    role: String,
+    content: String,
+    #[serde(default)]
+    timestamp: u64,
 }
 
 #[tauri::command]
@@ -79,9 +92,34 @@ pub async fn get_messages() -> Result<Vec<ChatMessage>, String> {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().map(|e| e == "json").unwrap_or(false) {
+                let session_id = path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
                 if let Ok(content) = std::fs::read_to_string(&path) {
+                    // 尝试解析为完整格式
                     if let Ok(session_messages) = serde_json::from_str::<Vec<ChatMessage>>(&content) {
-                        all_messages.extend(session_messages);
+                        for mut msg in session_messages {
+                            if msg.session_id.is_empty() {
+                                msg.session_id = session_id.clone();
+                            }
+                            all_messages.push(msg);
+                        }
+                    } else {
+                        // 尝试解析为简化格式
+                        if let Ok(stored_messages) = serde_json::from_str::<Vec<StoredMessage>>(&content) {
+                            for (i, stored) in stored_messages.into_iter().enumerate() {
+                                all_messages.push(ChatMessage {
+                                    id: format!("{}-{}", session_id, i),
+                                    session_id: session_id.clone(),
+                                    platform: "unknown".to_string(),
+                                    role: stored.role,
+                                    content: stored.content,
+                                    timestamp: stored.timestamp,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -115,7 +153,12 @@ pub async fn clear_messages(session_id: Option<String>, state: tauri::State<'_, 
                 let path = entry.path();
                 if path.extension().map(|e| e == "json").unwrap_or(false) {
                     if let Ok(content) = std::fs::read_to_string(&path) {
+                        // 尝试解析两种格式
                         if let Ok(mut messages) = serde_json::from_str::<Vec<ChatMessage>>(&content) {
+                            messages.retain(|m| m.timestamp > cutoff_ts);
+                            let json = serde_json::to_string_pretty(&messages).map_err(|e| e.to_string())?;
+                            std::fs::write(&path, json).map_err(|e| e.to_string())?;
+                        } else if let Ok(mut messages) = serde_json::from_str::<Vec<StoredMessage>>(&content) {
                             messages.retain(|m| m.timestamp > cutoff_ts);
                             let json = serde_json::to_string_pretty(&messages).map_err(|e| e.to_string())?;
                             std::fs::write(&path, json).map_err(|e| e.to_string())?;
