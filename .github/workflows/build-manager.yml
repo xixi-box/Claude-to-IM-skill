@@ -45,36 +45,57 @@ jobs:
         working-directory: manager
         run: npm run tauri:build
 
+      - name: Install 7zip
+        run: choco install 7zip -y
+
+      - name: Debug - List MSI contents
+        shell: bash
+        run: |
+          MSI_FILE=$(ls manager/src-tauri/target/release/bundle/msi/*.msi | head -1)
+          echo "=== MSI file: $MSI_FILE ==="
+          7z l "$MSI_FILE"
+
       - name: Create portable version
         shell: bash
         run: |
-          # Find the MSI file
           MSI_FILE=$(ls manager/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          echo "MSI file: $MSI_FILE"
 
-          # Install 7zip
-          choco install 7zip -y
+          # Extract MSI
+          mkdir -p msi_extracted
+          7z x "$MSI_FILE" -omsi_extracted -y
 
-          # Extract MSI to portable folder
-          mkdir -p portable
-          7z x "$MSI_FILE" -oportable -y
+          echo "=== Extracted structure ==="
+          find msi_extracted -type f | head -50
 
-          # Find the main app folder (usually contains .exe and resources)
-          APP_FOLDER=$(find portable -name "Claude-to-IM Manager.exe" -type f | head -1)
-          if [ -n "$APP_FOLDER" ]; then
-            # Get the directory containing the exe
-            APP_DIR=$(dirname "$APP_FOLDER")
-            echo "App directory: $APP_DIR"
+          # The main app is usually in a folder like "PFiles" or similar
+          # Let's find the exe and its resources
+          MAIN_EXE=$(find msi_extracted -name "*.exe" -type f | grep -i "claude" | grep -v "installer" | head -1)
+
+          if [ -n "$MAIN_EXE" ]; then
+            echo "Found main exe: $MAIN_EXE"
+            EXE_DIR=$(dirname "$MAIN_EXE")
+
+            # Create portable folder with all files from the exe's directory
+            mkdir -p portable
+            cp -r "$EXE_DIR"/* portable/ 2>/dev/null || true
+
+            # Also look for resources folder (might be parallel to exe)
+            PARENT_DIR=$(dirname "$EXE_DIR")
+            if [ -d "$PARENT_DIR/resources" ]; then
+              cp -r "$PARENT_DIR/resources" portable/ 2>/dev/null || true
+            fi
+
+            echo "=== Portable folder contents ==="
+            ls -la portable/
+            du -sh portable/
 
             # Create ZIP
-            cd "$APP_DIR/.."
-            7z a -tzip "$GITHUB_WORKSPACE/Claude-to-IM-Manager-Portable.zip" "$(basename "$APP_DIR")"
-            cd "$GITHUB_WORKSPACE"
-          else
-            echo "Could not find main exe, creating zip from entire extraction"
             cd portable
             7z a -tzip "$GITHUB_WORKSPACE/Claude-to-IM-Manager-Portable.zip" .
             cd "$GITHUB_WORKSPACE"
+          else
+            echo "ERROR: Could not find main exe"
+            exit 1
           fi
 
       - name: Upload artifacts
