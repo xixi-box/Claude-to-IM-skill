@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import StatusPage from './pages/Status'
 import LogsPage from './pages/Logs'
 import ChatPage from './pages/Chat'
+import ConfigPage from './pages/Config'
 import SettingsPage from './pages/Settings'
 import { useBridgeStore } from './store/bridge'
 import { getTranslation } from './i18n'
 
-type Page = 'status' | 'logs' | 'chat' | 'settings'
+type Page = 'status' | 'logs' | 'chat' | 'config' | 'settings'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('status')
@@ -37,6 +38,7 @@ function App() {
 
   const navItems = [
     { id: 'status' as Page, label: t('status'), icon: '📊' },
+    { id: 'config' as Page, label: t('config'), icon: '🔌' },
     { id: 'logs' as Page, label: t('logs'), icon: '📝' },
     { id: 'chat' as Page, label: t('chat'), icon: '💬' },
     { id: 'settings' as Page, label: t('settings'), icon: '⚙️' },
@@ -47,6 +49,7 @@ function App() {
       case 'status': return <StatusPage />
       case 'logs': return <LogsPage />
       case 'chat': return <ChatPage />
+      case 'config': return <ConfigPage />
       case 'settings': return <SettingsPage />
     }
   }

@@ -35,9 +35,47 @@ export interface ChatMessage {
   timestamp: number
 }
 
+export interface BridgeConfig {
+  CTI_RUNTIME?: string
+  CTI_ENABLED_CHANNELS?: string
+  CTI_DEFAULT_WORKDIR?: string
+  CTI_DEFAULT_MODE?: string
+  CTI_DEFAULT_MODEL?: string
+  CTI_CLAUDE_CODE_EXECUTABLE?: string
+  ANTHROPIC_API_KEY?: string
+  ANTHROPIC_BASE_URL?: string
+  // Telegram
+  CTI_TG_BOT_TOKEN?: string
+  CTI_TG_CHAT_ID?: string
+  CTI_TG_ALLOWED_USERS?: string
+  // Discord
+  CTI_DISCORD_BOT_TOKEN?: string
+  CTI_DISCORD_ALLOWED_USERS?: string
+  CTI_DISCORD_ALLOWED_CHANNELS?: string
+  CTI_DISCORD_ALLOWED_GUILDS?: string
+  // Feishu
+  CTI_FEISHU_APP_ID?: string
+  CTI_FEISHU_APP_SECRET?: string
+  CTI_FEISHU_DOMAIN?: string
+  CTI_FEISHU_ALLOWED_USERS?: string
+  // QQ
+  CTI_QQ_APP_ID?: string
+  CTI_QQ_APP_SECRET?: string
+  CTI_QQ_ALLOWED_USERS?: string
+  CTI_QQ_IMAGE_ENABLED?: string
+  CTI_QQ_MAX_IMAGE_SIZE?: string
+  // Permission
+  CTI_AUTO_APPROVE?: string
+  // Codex
+  CTI_CODEX_API_KEY?: string
+  CTI_CODEX_BASE_URL?: string
+  [key: string]: string | undefined
+}
+
 interface BridgeStore {
   status: BridgeStatus
   settings: Settings
+  config: BridgeConfig
   logs: LogLine[]
   messages: ChatMessage[]
 
@@ -48,6 +86,9 @@ interface BridgeStore {
 
   fetchSettings: () => Promise<void>
   saveSettings: (settings: Settings) => Promise<void>
+
+  fetchConfig: () => Promise<void>
+  saveConfig: (config: BridgeConfig) => Promise<void>
 
   fetchLogs: (lines?: number) => Promise<void>
   fetchMessages: () => Promise<void>
@@ -66,6 +107,13 @@ const defaultSettings: Settings = {
   message_retention_days: 3,
 }
 
+const defaultConfig: BridgeConfig = {
+  CTI_RUNTIME: 'claude',
+  CTI_ENABLED_CHANNELS: '',
+  CTI_DEFAULT_WORKDIR: '',
+  CTI_DEFAULT_MODE: 'code',
+}
+
 export const useBridgeStore = create<BridgeStore>((set, get) => ({
   status: {
     running: false,
@@ -74,6 +122,7 @@ export const useBridgeStore = create<BridgeStore>((set, get) => ({
     last_error: null,
   },
   settings: defaultSettings,
+  config: defaultConfig,
   logs: [],
   messages: [],
 
@@ -130,6 +179,24 @@ export const useBridgeStore = create<BridgeStore>((set, get) => ({
       set({ settings })
     } catch (e) {
       console.error('Failed to save settings:', e)
+    }
+  },
+
+  fetchConfig: async () => {
+    try {
+      const config = await invoke<BridgeConfig>('get_config')
+      set({ config: config || defaultConfig })
+    } catch (e) {
+      console.error('Failed to fetch config:', e)
+    }
+  },
+
+  saveConfig: async (config: BridgeConfig) => {
+    try {
+      await invoke('save_config', { config })
+      set({ config })
+    } catch (e) {
+      console.error('Failed to save config:', e)
     }
   },
 
