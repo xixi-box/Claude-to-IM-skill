@@ -44,32 +44,33 @@ export interface BridgeConfig {
   CTI_CLAUDE_CODE_EXECUTABLE?: string
   ANTHROPIC_API_KEY?: string
   ANTHROPIC_BASE_URL?: string
-  // Telegram
   CTI_TG_BOT_TOKEN?: string
   CTI_TG_CHAT_ID?: string
   CTI_TG_ALLOWED_USERS?: string
-  // Discord
   CTI_DISCORD_BOT_TOKEN?: string
   CTI_DISCORD_ALLOWED_USERS?: string
   CTI_DISCORD_ALLOWED_CHANNELS?: string
   CTI_DISCORD_ALLOWED_GUILDS?: string
-  // Feishu
   CTI_FEISHU_APP_ID?: string
   CTI_FEISHU_APP_SECRET?: string
   CTI_FEISHU_DOMAIN?: string
   CTI_FEISHU_ALLOWED_USERS?: string
-  // QQ
   CTI_QQ_APP_ID?: string
   CTI_QQ_APP_SECRET?: string
   CTI_QQ_ALLOWED_USERS?: string
   CTI_QQ_IMAGE_ENABLED?: string
   CTI_QQ_MAX_IMAGE_SIZE?: string
-  // Permission
   CTI_AUTO_APPROVE?: string
-  // Codex
   CTI_CODEX_API_KEY?: string
   CTI_CODEX_BASE_URL?: string
   [key: string]: string | undefined
+}
+
+export interface SkillStatus {
+  installed: boolean
+  version: string | null
+  path: string | null
+  error: string | null
 }
 
 interface BridgeStore {
@@ -78,6 +79,8 @@ interface BridgeStore {
   config: BridgeConfig
   logs: LogLine[]
   messages: ChatMessage[]
+  skillStatus: SkillStatus
+  isInstalling: boolean
 
   fetchStatus: () => Promise<void>
   start: () => Promise<void>
@@ -93,6 +96,9 @@ interface BridgeStore {
   fetchLogs: (lines?: number) => Promise<void>
   fetchMessages: () => Promise<void>
   clearMessages: (sessionId?: string) => Promise<void>
+
+  fetchSkillStatus: () => Promise<void>
+  installSkill: () => Promise<void>
 }
 
 const defaultSettings: Settings = {
@@ -125,6 +131,13 @@ export const useBridgeStore = create<BridgeStore>((set, get) => ({
   config: defaultConfig,
   logs: [],
   messages: [],
+  skillStatus: {
+    installed: false,
+    version: null,
+    path: null,
+    error: null,
+  },
+  isInstalling: false,
 
   fetchStatus: async () => {
     try {
@@ -224,6 +237,26 @@ export const useBridgeStore = create<BridgeStore>((set, get) => ({
       await get().fetchMessages()
     } catch (e) {
       console.error('Failed to clear messages:', e)
+    }
+  },
+
+  fetchSkillStatus: async () => {
+    try {
+      const skillStatus = await invoke<SkillStatus>('get_skill_status')
+      set({ skillStatus })
+    } catch (e) {
+      console.error('Failed to fetch skill status:', e)
+    }
+  },
+
+  installSkill: async () => {
+    set({ isInstalling: true })
+    try {
+      const skillStatus = await invoke<SkillStatus>('install_skill')
+      set({ skillStatus, isInstalling: false })
+    } catch (e) {
+      console.error('Failed to install skill:', e)
+      set({ isInstalling: false })
     }
   },
 }))

@@ -4,6 +4,7 @@
 mod bridge;
 mod config;
 mod messages;
+mod skill_installer;
 mod tray;
 
 use bridge::BridgeManager;
@@ -118,6 +119,8 @@ fn main() {
             messages::get_logs,
             messages::get_messages,
             messages::clear_messages,
+            skill_installer::get_skill_status,
+            skill_installer::install_skill,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

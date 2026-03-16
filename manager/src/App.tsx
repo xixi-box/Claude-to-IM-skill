@@ -4,6 +4,7 @@ import LogsPage from './pages/Logs'
 import ChatPage from './pages/Chat'
 import ConfigPage from './pages/Config'
 import SettingsPage from './pages/Settings'
+import InstallPage from './pages/Install'
 import { useBridgeStore } from './store/bridge'
 import { getTranslation } from './i18n'
 
@@ -11,13 +12,14 @@ type Page = 'status' | 'logs' | 'chat' | 'config' | 'settings'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('status')
-  const { status, settings, fetchSettings } = useBridgeStore()
+  const { status, settings, fetchSettings, skillStatus, fetchSkillStatus } = useBridgeStore()
   const t = (key: any) => getTranslation(settings.language, key)
 
-  // 加载设置
+  // 加载设置和技能状态
   useEffect(() => {
     fetchSettings()
-  }, [fetchSettings])
+    fetchSkillStatus()
+  }, [fetchSettings, fetchSkillStatus])
 
   // 应用主题
   useEffect(() => {
@@ -30,11 +32,15 @@ function App() {
     }
     applyTheme()
 
-    // 监听系统主题变化
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     mediaQuery.addEventListener('change', applyTheme)
     return () => mediaQuery.removeEventListener('change', applyTheme)
   }, [settings.theme])
+
+  // 如果未安装技能，显示安装页面
+  if (!skillStatus.installed) {
+    return <InstallPage />
+  }
 
   const navItems = [
     { id: 'status' as Page, label: t('status'), icon: '📊' },
@@ -59,7 +65,7 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-logo">
           <h1>Claude-to-IM</h1>
-          <span>
+          <span className={status.running ? 'status-running' : 'status-stopped'}>
             {status.running ? `● ${t('running')}` : `○ ${t('stopped')}`}
           </span>
         </div>
@@ -70,11 +76,14 @@ function App() {
               className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
               onClick={() => setCurrentPage(item.id)}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
             </div>
           ))}
         </nav>
+        <div className="sidebar-footer">
+          <span className="version">v1.0.0</span>
+        </div>
       </aside>
       <main className="main-content">
         {renderPage()}

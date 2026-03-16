@@ -11,6 +11,16 @@ export const translations = {
     running: '运行中',
     stopped: '已停止',
 
+    // 安装页
+    installSubtitle: '将 Claude Code 连接到 IM 平台',
+    skillNotInstalled: '检测到桥接服务未安装',
+    skillInstalled: '桥接服务已安装',
+    requirements: '系统要求',
+    installNow: '立即安装',
+    installing: '正在安装...',
+    installed: '已安装',
+    installHint: '安装完成！请前往配置页面设置机器人凭据',
+
     // 配置页
     configTitle: '机器人配置',
     configSubtitle: '配置 IM 平台机器人凭据',
@@ -110,6 +120,16 @@ export const translations = {
     running: '運行中',
     stopped: '已停止',
 
+    // 安裝頁
+    installSubtitle: '將 Claude Code 連接到 IM 平台',
+    skillNotInstalled: '檢測到橋接服務未安裝',
+    skillInstalled: '橋接服務已安裝',
+    requirements: '系統要求',
+    installNow: '立即安裝',
+    installing: '正在安裝...',
+    installed: '已安裝',
+    installHint: '安裝完成！請前往配置頁面設置機器人憑據',
+
     // 配置頁
     configTitle: '機器人配置',
     configSubtitle: '配置 IM 平台機器人憑據',
@@ -208,6 +228,16 @@ export const translations = {
     settings: 'Settings',
     running: 'Running',
     stopped: 'Stopped',
+
+    // Install page
+    installSubtitle: 'Connect Claude Code to IM platforms',
+    skillNotInstalled: 'Bridge service not installed',
+    skillInstalled: 'Bridge service installed',
+    requirements: 'Requirements',
+    installNow: 'Install Now',
+    installing: 'Installing...',
+    installed: 'Installed',
+    installHint: 'Installation complete! Go to Config page to set up bot credentials',
 
     // Config page
     configTitle: 'Bot Configuration',
