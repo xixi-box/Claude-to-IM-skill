@@ -52,6 +52,7 @@ jobs:
           path: |
             manager/src-tauri/target/release/bundle/msi/*.msi
             manager/src-tauri/target/release/bundle/nsis/*.exe
+            manager/src-tauri/target/release/claude-to-im-manager.exe
 
   release:
     needs: build-windows

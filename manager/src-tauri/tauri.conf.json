@@ -31,7 +31,7 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["msi", "nsis"],
+      "targets": ["msi", "nsis", "updater"],
       "identifier": "com.claude-to-im.manager",
       "icon": [
         "../icons/32x32.png",
